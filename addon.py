@@ -2877,6 +2877,9 @@ def register():
 
     bpy.utils.register_class(BLENDERMCP_PT_Panel)
     bpy.utils.register_class(BLENDERMCP_OT_SetFreeTrialHyper3DAPIKey)
+    bpy.utils.register_class(BLENDERMCP_OT_OpenRouterChat)
+    bpy.utils.register_class(BLENDERMCP_OT_OpenRouterClear)
+    bpy.utils.register_class(BLENDERMCP_OT_OpenRouterShowLog)
     bpy.utils.register_class(BLENDERMCP_OT_StartServer)
     bpy.utils.register_class(BLENDERMCP_OT_StopServer)
     bpy.utils.register_class(BLENDERMCP_OT_OpenTerms)
@@ -2891,6 +2894,9 @@ def unregister():
 
     bpy.utils.unregister_class(BLENDERMCP_PT_Panel)
     bpy.utils.unregister_class(BLENDERMCP_OT_SetFreeTrialHyper3DAPIKey)
+    bpy.utils.unregister_class(BLENDERMCP_OT_OpenRouterChat)
+    bpy.utils.unregister_class(BLENDERMCP_OT_OpenRouterClear)
+    bpy.utils.unregister_class(BLENDERMCP_OT_OpenRouterShowLog)
     bpy.utils.unregister_class(BLENDERMCP_OT_StartServer)
     bpy.utils.unregister_class(BLENDERMCP_OT_StopServer)
     bpy.utils.unregister_class(BLENDERMCP_OT_OpenTerms)

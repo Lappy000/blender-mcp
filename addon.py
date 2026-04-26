@@ -2415,7 +2415,44 @@ class BLENDERMCP_PT_Panel(bpy.types.Panel):
                 layout.prop(scene, "blendermcp_hunyuan3d_num_inference_steps", text="Number of Inference Steps")
                 layout.prop(scene, "blendermcp_hunyuan3d_guidance_scale", text="Guidance Scale")
                 layout.prop(scene, "blendermcp_hunyuan3d_texture", text="Generate Texture")
-        
+
+        # OpenRouter AI Chat section
+        layout.separator()
+        box = layout.box()
+        box.label(text="OpenRouter AI Chat", icon='OUTLINER_OB_LIGHT')
+        box.prop(scene, "blendermcp_openrouter_api_key", text="API Key")
+        box.prop(scene, "blendermcp_openrouter_model", text="Model")
+
+        # Chat history display (last N messages)
+        chat_log = _openrouter_chat_log
+        if chat_log:
+            hist_box = box.box()
+            # Show last 8 messages
+            display_msgs = chat_log[-8:]
+            for msg in display_msgs:
+                role = msg["role"]
+                text = msg["display"]
+                if role == "user":
+                    row = hist_box.row()
+                    row.alert = False
+                    row.label(text=f"You: {text[:100]}", icon='USER')
+                elif role == "assistant":
+                    row = hist_box.row()
+                    row.label(text=f"AI: {text[:100]}", icon='LIGHT')
+                elif role == "error":
+                    row = hist_box.row()
+                    row.alert = True
+                    row.label(text=f"ERR: {text[:100]}", icon='ERROR')
+
+        # Prompt input
+        box.prop(scene, "blendermcp_openrouter_prompt", text="", icon='CONSOLE')
+        row = box.row(align=True)
+        row.scale_y = 1.4
+        row.operator("blendermcp.openrouter_chat", text="Send", icon='PLAY')
+        row.operator("blendermcp.openrouter_clear", text="Clear Chat", icon='TRASH')
+        row.operator("blendermcp.openrouter_show_log", text="Full Log", icon='TEXT')
+
+        layout.separator()
         if not scene.blendermcp_server_running:
             layout.operator("blendermcp.start_server", text="Connect to MCP server")
         else:

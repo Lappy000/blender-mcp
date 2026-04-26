@@ -2636,6 +2636,45 @@ class BLENDERMCP_OT_OpenRouterChat(bpy.types.Operator):
         return {'FINISHED'}
 
 
+# Operator to clear chat history
+class BLENDERMCP_OT_OpenRouterClear(bpy.types.Operator):
+    bl_idname = "blendermcp.openrouter_clear"
+    bl_label = "Clear Chat"
+    bl_description = "Clear conversation history"
+
+    def execute(self, context):
+        _openrouter_chat_log.clear()
+        _openrouter_chat_history.clear()
+        if "AI_Chat_Log" in bpy.data.texts:
+            bpy.data.texts.remove(bpy.data.texts["AI_Chat_Log"])
+        self.report({'INFO'}, "Chat cleared")
+        return {'FINISHED'}
+
+
+# Operator to show full chat log in Text Editor
+class BLENDERMCP_OT_OpenRouterShowLog(bpy.types.Operator):
+    bl_idname = "blendermcp.openrouter_show_log"
+    bl_label = "Show Full Log"
+    bl_description = "Open the full AI chat log in Blender's Text Editor"
+
+    def execute(self, context):
+        log_name = "AI_Chat_Log"
+        if log_name not in bpy.data.texts:
+            bpy.data.texts.new(log_name)
+            bpy.data.texts[log_name].write("(No chat history yet)\n")
+
+        # Try to find or create a Text Editor area to show it
+        for area in context.screen.areas:
+            if area.type == 'TEXT_EDITOR':
+                area.spaces[0].text = bpy.data.texts[log_name]
+                self.report({'INFO'}, "Chat log shown in Text Editor")
+                return {'FINISHED'}
+
+        # No text editor open тАФ tell user where to find it
+        self.report({'INFO'}, f"Chat log saved to Text datablock '{log_name}'. Open a Text Editor to view it.")
+        return {'FINISHED'}
+
+
 # Operator to start the server
 class BLENDERMCP_OT_StartServer(bpy.types.Operator):
     bl_idname = "blendermcp.start_server"

@@ -2470,6 +2470,172 @@ class BLENDERMCP_OT_SetFreeTrialHyper3DAPIKey(bpy.types.Operator):
         self.report({'INFO'}, "API Key set successfully!")
         return {'FINISHED'}
 
+# Operator for OpenRouter AI Chat
+class BLENDERMCP_OT_OpenRouterChat(bpy.types.Operator):
+    bl_idname = "blendermcp.openrouter_chat"
+    bl_label = "Send to OpenRouter AI"
+    bl_description = "Send prompt to OpenRouter AI and execute the returned Blender Python code"
+
+    def execute(self, context):
+        scene = context.scene
+        api_key = scene.blendermcp_openrouter_api_key
+        model = scene.blendermcp_openrouter_model
+        prompt = scene.blendermcp_openrouter_prompt
+
+        if not api_key:
+            self.report({'ERROR'}, "OpenRouter API key is not set")
+            return {'CANCELLED'}
+        if not prompt.strip():
+            self.report({'ERROR'}, "Prompt is empty")
+            return {'CANCELLED'}
+        if not model:
+            self.report({'ERROR'}, "Model ID is not set")
+            return {'CANCELLED'}
+
+        # Log user message
+        _chat_log_append("user", prompt)
+        _chat_history_append("user", prompt)
+        _write_to_text_log(f"\n{'='*60}\nYOU: {prompt}\n{'='*60}")
+
+        # Gather scene context for the AI
+        scene_objects = []
+        for obj in bpy.data.objects:
+            info = f"  - {obj.name} (type={obj.type}"
+            if obj.type == 'MESH' and obj.data:
+                info += f", verts={len(obj.data.vertices)}, faces={len(obj.data.polygons)}"
+            info += ")"
+            scene_objects.append(info)
+        scene_info = "\n".join(scene_objects[:60]) if scene_objects else "  (empty scene)"
+
+        active_obj = context.active_object
+        active_info = ""
+        if active_obj:
+            loc = [round(v, 3) for v in active_obj.location]
+            active_info = f"\nActive/selected object: {active_obj.name} (type={active_obj.type}, location={loc})"
+            if active_obj.type == 'MESH' and active_obj.data:
+                mat_names = [m.name for m in active_obj.data.materials if m]
+                if mat_names:
+                    active_info += f"\n  Materials: {', '.join(mat_names)}"
+
+        system_prompt = (
+            "You are a Blender Python scripting assistant running inside Blender {ver}. "
+            "The user talks to you in a chat. They may ask you to do things in Blender, "
+            "ask questions about the scene, or have a conversation.\n\n"
+            "RESPONSE FORMAT RULES:\n"
+            "- If the user wants you to DO something in Blender, respond with a Python code block "
+            "wrapped in ```python ... ```. The code uses `bpy` (already imported). "
+            "You may include a short explanation BEFORE or AFTER the code block.\n"
+            "- If the user asks a QUESTION or wants to CHAT, just respond in plain text, no code.\n"
+            "- You can mix text and code: explain what you'll do, then provide the code block.\n"
+            "- NEVER put multiple ```python blocks in one response. One block max.\n\n"
+            "CURRENT SCENE STATE:\n{scene}\n{active}"
+        ).format(
+            ver=bpy.app.version_string,
+            scene=scene_info,
+            active=active_info
+        )
+
+        # Build messages: system + conversation history (keep last 20 exchanges)
+        messages = [{"role": "system", "content": system_prompt}]
+        history_slice = _openrouter_chat_history[-40:]  # last 20 pairs
+        messages.extend(history_slice)
+
+        try:
+            response = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "messages": messages,
+                    "temperature": 0.3,
+                },
+                timeout=120,
+            )
+
+            if response.status_code != 200:
+                error_msg = f"API error {response.status_code}: {response.text[:500]}"
+                _chat_log_append("error", error_msg)
+                _write_to_text_log(f"[ERROR] {error_msg}")
+                self.report({'ERROR'}, error_msg[:200])
+                return {'CANCELLED'}
+
+            data = response.json()
+            ai_text = data["choices"][0]["message"]["content"]
+
+            # Save full AI response to history
+            _chat_history_append("assistant", ai_text)
+
+            # Extract code block if present
+            code = None
+            import re as _re
+            code_match = _re.search(r'```python\s*\n(.*?)```', ai_text, _re.DOTALL)
+            if code_match:
+                code = code_match.group(1).strip()
+
+            # Get the non-code text for display
+            if code_match:
+                text_before = ai_text[:code_match.start()].strip()
+                text_after = ai_text[code_match.end():].strip()
+                display_text = text_before or text_after or "Code executed"
+            else:
+                display_text = ai_text.strip()
+
+            # Log AI response
+            _chat_log_append("assistant", display_text[:200])
+            _write_to_text_log(f"\nAI ({model}):\n{ai_text}\n")
+
+            # Execute code if present
+            if code:
+                _write_to_text_log(f"\n[EXECUTING CODE]\n{code}\n")
+                print(f"\n[OpenRouter AI] Executing code:\n{code}\n")
+
+                try:
+                    namespace = {"bpy": bpy, "mathutils": mathutils}
+                    capture_buffer = io.StringIO()
+                    with redirect_stdout(capture_buffer):
+                        exec(code, namespace)
+
+                    output = capture_buffer.getvalue()
+                    if output:
+                        _write_to_text_log(f"[OUTPUT] {output}")
+                        print(f"[OpenRouter AI] Output: {output}")
+                    self.report({'INFO'}, f"AI: {display_text[:80]}")
+                    _write_to_text_log("[OK] Code executed successfully")
+
+                except Exception as e:
+                    error_msg = f"Code error: {str(e)}"
+                    _chat_log_append("error", error_msg)
+                    _write_to_text_log(f"[CODE ERROR] {error_msg}\n[FAILED CODE]\n{code}")
+                    # Add error to history so AI can self-correct
+                    _chat_history_append("user", f"That code raised an error: {str(e)}")
+                    self.report({'ERROR'}, error_msg[:200])
+                    print(f"[OpenRouter AI] {error_msg}")
+                    traceback.print_exc()
+            else:
+                # No code, just a text response
+                self.report({'INFO'}, f"AI: {display_text[:80]}")
+
+        except requests.exceptions.Timeout:
+            _chat_log_append("error", "Request timed out (120s)")
+            _write_to_text_log("[ERROR] Request timed out")
+            self.report({'ERROR'}, "OpenRouter request timed out")
+            return {'CANCELLED'}
+        except Exception as e:
+            error_msg = f"Error: {str(e)}"
+            _chat_log_append("error", error_msg)
+            _write_to_text_log(f"[ERROR] {error_msg}")
+            self.report({'ERROR'}, error_msg[:200])
+            traceback.print_exc()
+            return {'CANCELLED'}
+
+        # Clear prompt after sending
+        scene.blendermcp_openrouter_prompt = ""
+        return {'FINISHED'}
+
+
 # Operator to start the server
 class BLENDERMCP_OT_StartServer(bpy.types.Operator):
     bl_idname = "blendermcp.start_server"

@@ -2670,7 +2670,7 @@ class BLENDERMCP_OT_OpenRouterShowLog(bpy.types.Operator):
                 self.report({'INFO'}, "Chat log shown in Text Editor")
                 return {'FINISHED'}
 
-        # No text editor open тАФ tell user where to find it
+        # No text editor open — tell user where to find it
         self.report({'INFO'}, f"Chat log saved to Text datablock '{log_name}'. Open a Text Editor to view it.")
         return {'FINISHED'}
 

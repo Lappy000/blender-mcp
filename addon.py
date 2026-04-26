@@ -32,6 +32,29 @@ bl_info = {
 
 RODIN_FREE_TRIAL_KEY = "k9TcfFoEhNd9cCPP2guHAHHHkctZHIRhZDywZ1euGUXwihbYLpOjQhofby80NJez"
 
+# OpenRouter chat state (persists during Blender session)
+_openrouter_chat_log = []       # List of {"role": ..., "display": ...} for UI display
+_openrouter_chat_history = []   # List of {"role": "user"/"assistant", "content": ...} for API context
+
+
+def _chat_log_append(role, display_text):
+    """Append to the UI chat log."""
+    _openrouter_chat_log.append({"role": role, "display": display_text})
+
+
+def _chat_history_append(role, content):
+    """Append to the API conversation history."""
+    _openrouter_chat_history.append({"role": role, "content": content})
+
+
+def _write_to_text_log(text):
+    """Write text to a Blender Text datablock for full log viewing."""
+    log_name = "AI_Chat_Log"
+    if log_name not in bpy.data.texts:
+        bpy.data.texts.new(log_name)
+    log = bpy.data.texts[log_name]
+    log.write(text + "\n")
+
 # Add User-Agent as required by Poly Haven API
 REQ_HEADERS = requests.utils.default_headers()
 REQ_HEADERS.update({"User-Agent": "blender-mcp"})

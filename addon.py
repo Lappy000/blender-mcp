@@ -2671,7 +2671,9 @@ def unregister():
     del bpy.types.Scene.blendermcp_hunyuan3d_num_inference_steps
     del bpy.types.Scene.blendermcp_hunyuan3d_guidance_scale
     del bpy.types.Scene.blendermcp_hunyuan3d_texture
-
+    del bpy.types.Scene.blendermcp_openrouter_api_key
+    del bpy.types.Scene.blendermcp_openrouter_model
+    del bpy.types.Scene.blendermcp_openrouter_prompt
     print("BlenderMCP addon unregistered")
 
 if __name__ == "__main__":

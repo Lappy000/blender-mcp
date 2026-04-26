@@ -2610,6 +2610,26 @@ def register():
         default=""
     )
 
+    # OpenRouter AI Chat properties
+    bpy.types.Scene.blendermcp_openrouter_api_key = bpy.props.StringProperty(
+        name="OpenRouter API Key",
+        subtype="PASSWORD",
+        description="API Key from openrouter.ai",
+        default=""
+    )
+
+    bpy.types.Scene.blendermcp_openrouter_model = bpy.props.StringProperty(
+        name="OpenRouter Model",
+        description="Model ID (e.g. anthropic/claude-sonnet-4, openai/gpt-4o)",
+        default="anthropic/claude-sonnet-4"
+    )
+
+    bpy.types.Scene.blendermcp_openrouter_prompt = bpy.props.StringProperty(
+        name="Prompt",
+        description="What you want the AI to do in Blender",
+        default=""
+    )
+
     # Register preferences class
     bpy.utils.register_class(BLENDERMCP_AddonPreferences)
 
